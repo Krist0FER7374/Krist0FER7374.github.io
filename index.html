@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Журнал приёмки ПВЗ</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0d1117;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e2e8f0;min-height:100vh;padding:1.25rem}
+  .hero{background:linear-gradient(135deg,#1e2d45 0%,#162032 60%,#1a2a40 100%);border-radius:14px;padding:1.4rem 1.75rem;margin-bottom:1.25rem;position:relative;overflow:hidden}
+  .hero::after{content:'';position:absolute;right:-30px;top:-30px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,0.04);pointer-events:none}
+  .hero-title{font-size:20px;font-weight:600;color:#fff;display:flex;align-items:center;gap:10px;margin-bottom:4px}
+  .hero-sub{font-size:13px;color:rgba(255,255,255,0.4)}
+  .hero-status{position:absolute;right:1.5rem;top:50%;transform:translateY(-50%);font-size:12px;color:rgba(255,255,255,0.3);text-align:right}
+  .days{display:flex;gap:8px;margin-bottom:1.1rem;flex-wrap:wrap}
+  .day-btn{padding:7px 18px;font-size:13px;font-weight:500;border-radius:20px;border:1.5px solid #2e3a4e;background:transparent;color:#6b7a8d;cursor:pointer;transition:all 0.15s}
+  .day-btn:hover{border-color:#4a5568;color:#a0aec0}
+  .day-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.2rem}
+  @media(max-width:600px){.kpis{grid-template-columns:repeat(2,1fr)}}
+  .kpi{background:#161e2e;border-radius:10px;padding:14px 16px;border-left:3px solid #333}
+  .kpi-label{font-size:10px;color:#6b7a8d;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;font-weight:500}
+  .kpi-val{font-size:28px;font-weight:600;color:#fff;line-height:1}
+  .toolbar{display:flex;gap:8px;margin-bottom:0.75rem;align-items:center;flex-wrap:wrap}
+  .btn{padding:7px 14px;font-size:12px;font-weight:500;border-radius:8px;border:1px solid #2e3a4e;background:#161e2e;color:#94a3b8;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:5px}
+  .btn:hover{border-color:#3b4f6a;color:#e2e8f0}
+  .btn.primary{background:#2563eb;border-color:#2563eb;color:#fff}
+  .btn.primary:hover{background:#1d4ed8}
+  .search{padding:7px 12px;font-size:13px;border-radius:8px;border:1px solid #2e3a4e;background:#161e2e;color:#e2e8f0;outline:none;width:200px}
+  .search:focus{border-color:#3b82f6}
+  .search::placeholder{color:#4b5563}
+  .tbl-outer{border-radius:10px;overflow:hidden;border:1px solid #1e2a3e}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead tr{background:#131c2e}
+  thead th{padding:11px 12px;text-align:left;font-weight:500;color:#6b7a8d;font-size:11px;letter-spacing:0.07em;text-transform:uppercase;white-space:nowrap;border-bottom:1px solid #1e2a3e;cursor:pointer;user-select:none}
+  thead th:hover{color:#94a3b8}
+  tbody tr{border-bottom:1px solid #131c2e;transition:background 0.1s}
+  tbody tr:last-child{border-bottom:none}
+  tbody tr:hover{background:#1a2540}
+  tbody tr.dim{opacity:0.28}
+  tbody td{padding:10px 12px;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;font-size:13px;max-width:150px}
+  .pvz-name{font-weight:600;color:#f0f4ff;font-size:13px}
+  .chip{display:inline-flex;align-items:center;justify-content:center;padding:3px 11px;border-radius:20px;font-size:12px;font-weight:600;min-width:46px}
+  .ok{background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(52,211,153,0.25)}
+  .warn{background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.25)}
+  .bad{background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(248,113,113,0.25)}
+  .gray{background:rgba(100,116,139,0.1);color:#64748b;border:1px solid rgba(100,116,139,0.2)}
+  .jlink{color:#60a5fa;font-size:12px;font-weight:500;text-decoration:none}
+  .jlink:hover{text-decoration:underline}
+  .dash{color:#2d3748;font-size:15px}
+  .muted{color:#4b5563;font-size:12px}
+  .loader{text-align:center;padding:3rem;color:#4b5563;font-size:14px}
+  .err{text-align:center;padding:2rem;color:#f87171;font-size:13px;background:#1e1010;border-radius:10px;margin-top:1rem}
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center}
+  .modal-bg.open{display:flex}
+  .modal{background:#161e2e;border-radius:14px;padding:1.5rem;width:480px;max-width:95vw;border:1px solid #2e3a4e}
+  .modal h3{font-size:16px;font-weight:600;color:#f0f4ff;margin-bottom:1rem}
+  .field{margin-bottom:0.85rem}
+  .field label{display:block;font-size:11px;color:#6b7a8d;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px}
+  .field input{width:100%;padding:8px 12px;border-radius:8px;border:1px solid #2e3a4e;background:#0d1117;color:#e2e8f0;font-size:13px;outline:none}
+  .field input:focus{border-color:#3b82f6}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:1.25rem}
+  .add-day-row{background:#0d1520;border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .add-day-row label{font-size:12px;color:#6b7a8d}
+  .add-day-row input{padding:5px 10px;border-radius:6px;border:1px solid #2e3a4e;background:#161e2e;color:#e2e8f0;font-size:13px;outline:none;width:120px}
+  .add-day-row input:focus{border-color:#3b82f6}
+  .cfg-box{background:#0d1117;border:1px solid #2e3a4e;border-radius:10px;padding:1rem;margin-bottom:1rem}
+  .cfg-box p{font-size:12px;color:#6b7a8d;margin-bottom:0.5rem}
+  .cfg-box input{width:100%;padding:7px 10px;border-radius:7px;border:1px solid #2e3a4e;background:#161e2e;color:#e2e8f0;font-size:13px;outline:none}
+  .cfg-box input:focus{border-color:#3b82f6}
+  .tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:#1e2a3e;color:#6b7a8d;margin-left:6px}
+  #refreshBtn{margin-left:auto}
+  .spin{animation:spin 1s linear infinite;display:inline-block}
+  @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- CONFIG MODAL -->
+<div class="modal-bg" id="cfgModal">
+  <div class="modal">
+    <h3>⚙️ Настройка источника данных</h3>
+    <div class="cfg-box">
+      <p>ID вашей Google Таблицы (из URL)</p>
+      <input type="text" id="sheetIdInput" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms">
+    </div>
+    <div class="cfg-box">
+      <p>Таблица должна быть открыта для всех по ссылке (просмотр). Формат листа описан в README.</p>
+    </div>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeCfg()">Отмена</button>
+      <button class="btn primary" onclick="saveCfg()">Сохранить и загрузить</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD ROW MODAL -->
+<div class="modal-bg" id="addModal">
+  <div class="modal">
+    <h3>➕ Добавить запись</h3>
+    <div class="add-day-row">
+      <label>День (дата):</label>
+      <input type="text" id="inp-day" placeholder="напр. 25">
+      <label>ПВЗ:</label>
+      <input type="text" id="inp-pvz" placeholder="ТАШ-75">
+    </div>
+    <div class="field-row">
+      <div class="field"><label>План (ч:мм)</label><input type="text" id="inp-plan" placeholder="1:00"></div>
+      <div class="field"><label>Приезд</label><input type="text" id="inp-arrive" placeholder="до открытия"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Отъезд</label><input type="text" id="inp-leave" placeholder="до открытия"></div>
+      <div class="field"><label>Начало приёмки</label><input type="text" id="inp-start" placeholder="10:00"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Окончание</label><input type="text" id="inp-end" placeholder="11:00"></div>
+      <div class="field"><label>Непринятые</label><input type="text" id="inp-miss" placeholder="0"></div>
+    </div>
+    <div class="field"><label>Ссылка JIRA</label><input type="text" id="inp-jira" placeholder="https://jsm.uzum.com/..."></div>
+    <p style="font-size:11px;color:#4b5563;margin-top:0.5rem">* Данные сохраняются локально и в Google Sheets (если настроен API).</p>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeAdd()">Отмена</button>
+      <button class="btn primary" onclick="saveRow()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="hero">
+  <div class="hero-title">📦 Журнал приёмки ПВЗ</div>
+  <div class="hero-sub">Ташкент — мониторинг по дням и точкам выдачи</div>
+  <div class="hero-status" id="heroStatus">—</div>
+</div>
+
+<div class="days" id="dayRow"></div>
+<div class="kpis" id="kpiRow"></div>
+
+<div class="toolbar">
+  <input class="search" type="text" placeholder="🔍 Поиск по ПВЗ..." id="searchBox" oninput="render()">
+  <button class="btn primary" onclick="openAdd()">+ Добавить запись</button>
+  <button class="btn" onclick="openCfg()">⚙️ Источник данных</button>
+  <button class="btn" id="refreshBtn" onclick="loadSheet()">↻ Обновить</button>
+</div>
+
+<div id="tableArea">
+  <div class="loader" id="loader">Загрузка данных...</div>
+</div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────
+const SHEET_ID_KEY = 'pvz_sheet_id';
+const DATA_KEY = 'pvz_local_data';
+
+// Формат: строки листа "Data" с колонками:
+// day | pvz | plan | arrive | leave | start | end | dur | miss | jira
+// Лист должен быть опубликован (Файл → Поделиться → Опубликовать в Интернете → CSV)
+// URL для CSV: https://docs.google.com/spreadsheets/d/SHEET_ID/gviz/tq?tqx=out:csv&sheet=Data
+
+function getSheetId(){ return localStorage.getItem(SHEET_ID_KEY)||''; }
+
+// ── LOCAL DATA (fallback + add entries) ─────────────────
+function getLocalData(){
+  const s=localStorage.getItem(DATA_KEY);
+  return s?JSON.parse(s):getDefaultData();
+}
+function saveLocalData(d){ localStorage.setItem(DATA_KEY,JSON.stringify(d)); }
+
+// ── LOAD FROM GOOGLE SHEETS ─────────────────────────────
+let allData=[];
+let loading=false;
+
+async function loadSheet(){
+  const id=getSheetId();
+  const btn=document.getElementById('refreshBtn');
+  btn.innerHTML='<span class="spin">↻</span> Загрузка';
+  btn.disabled=true;
+
+  if(!id){
+    // No sheet configured — use local data
+    allData=getLocalData();
+    setStatus('Локальные данные (Google Sheets не настроен)');
+    finishLoad(btn);
+    return;
+  }
+
+  try{
+    // Use gviz CSV export — works with publicly shared sheets, no API key needed
+    const url=`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=Data`;
+    const res=await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const csv=await res.text();
+    const parsed=parseCSV(csv);
+    allData=parsed;
+    saveLocalData(parsed);
+    setStatus('Обновлено: '+new Date().toLocaleTimeString('ru'));
+  }catch(e){
+    console.warn('Sheet load failed:',e);
+    allData=getLocalData();
+    setStatus('⚠️ Ошибка загрузки — показаны локальные данные');
+  }
+  finishLoad(btn);
+}
+
+function finishLoad(btn){
+  btn.innerHTML='↻ Обновить';
+  btn.disabled=false;
+  buildDayList();
+  render();
+}
+
+function setStatus(s){ document.getElementById('heroStatus').textContent=s; }
+
+// ── CSV PARSER ───────────────────────────────────────────
+// Expected columns: day,pvz,plan,arrive,leave,start,end,dur,miss,jira
+function parseCSV(text){
+  const rows=text.trim().split('\n').map(r=>{
+    // handle quoted fields
+    const cols=[];let cur='',inQ=false;
+    for(let i=0;i<r.length;i++){
+      const c=r[i];
+      if(c==='"'){ inQ=!inQ; }
+      else if(c===','&&!inQ){ cols.push(cur.trim());cur=''; }
+      else cur+=c;
+    }
+    cols.push(cur.trim());
+    return cols;
+  });
+  const header=rows[0].map(h=>h.toLowerCase().replace(/[^a-zа-яё]/gi,''));
+  const data=[];
+  for(let i=1;i<rows.length;i++){
+    const r=rows[i];
+    if(r.length<2||!r[0])continue;
+    const obj={};
+    header.forEach((h,idx)=>{ obj[h]=r[idx]||''; });
+    data.push({
+      day: obj['day']||obj['день']||r[0],
+      pvz: obj['pvz']||obj['пвз']||r[1],
+      plan: obj['plan']||obj['план']||r[2]||'1:00',
+      arrive: obj['arrive']||obj['приезд']||r[3]||'',
+      leave: obj['leave']||obj['отъезд']||r[4]||'',
+      start: obj['start']||obj['начало']||r[5]||'',
+      end: obj['end']||obj['конец']||r[6]||'',
+      dur: obj['dur']||obj['время']||r[7]||'0:00',
+      miss: parseInt(obj['miss']||obj['непринятые']||r[8])||0,
+      jira: obj['jira']||r[9]||'',
+    });
+  }
+  return data;
+}
+
+// ── DAY LIST ─────────────────────────────────────────────
+let curDay='';
+
+function getDays(){
+  const set=new Set(allData.map(r=>r.day));
+  return [...set].sort((a,b)=>Number(a)-Number(b));
+}
+
+function buildDayList(){
+  const days=getDays();
+  if(!days.length){ document.getElementById('dayRow').innerHTML=''; return; }
+  if(!curDay||!days.includes(curDay)) curDay=days[0];
+  document.getElementById('dayRow').innerHTML=days.map(d=>
+    `<div class="day-btn${d===curDay?' active':''}" onclick="setDay('${d}')">${fmtDay(d)}</div>`
+  ).join('');
+}
+
+function fmtDay(d){
+  const n=parseInt(d);
+  if(!isNaN(n)&&n>=1&&n<=31) return n+' апр';
+  return d;
+}
+
+function setDay(d){ curDay=d; buildDayList(); render(); }
+
+// ── KPI ──────────────────────────────────────────────────
+function dm(s){
+  if(!s||s==='0:00')return 0;
+  const p=s.split(':');
+  return +p[0]*60+(+p[1]||0);
+}
+
+function renderKPI(rows){
+  const active=rows.filter(r=>r.dur&&r.dur!=='0:00');
+  const miss=rows.reduce((s,r)=>s+(parseInt(r.miss)||0),0);
+  const jiras=rows.filter(r=>r.jira&&r.jira.startsWith('http')).length;
+  const avg=active.length?Math.round(active.reduce((s,r)=>s+dm(r.dur),0)/active.length):0;
+  const avgS=`${Math.floor(avg/60)}:${String(avg%60).padStart(2,'0')}`;
+  document.getElementById('kpiRow').innerHTML=`
+    <div class="kpi" style="border-left-color:#2563eb"><div class="kpi-label">ПВЗ сегодня</div><div class="kpi-val">${active.length}</div></div>
+    <div class="kpi" style="border-left-color:#10b981"><div class="kpi-label">Среднее время</div><div class="kpi-val">${avgS}</div></div>
+    <div class="kpi" style="border-left-color:${miss>3?'#ef4444':miss>0?'#f59e0b':'#10b981'}"><div class="kpi-label">Непринятые</div><div class="kpi-val">${miss}</div></div>
+    <div class="kpi" style="border-left-color:#8b5cf6"><div class="kpi-label">Тикеты JIRA</div><div class="kpi-val">${jiras}</div></div>
+  `;
+}
+
+// ── CHIPS ─────────────────────────────────────────────────
+function chipDur(dur,plan){
+  const m=dm(dur),pm=dm(plan||'1:00');
+  if(!m)return`<span class="chip gray">—</span>`;
+  if(m<=pm)return`<span class="chip ok">${dur}</span>`;
+  if(m<=pm*1.4)return`<span class="chip warn">${dur}</span>`;
+  return`<span class="chip bad">${dur}</span>`;
+}
+function chipMiss(v){
+  const n=parseInt(v);
+  if(isNaN(n))return`<span class="dash">—</span>`;
+  if(n===0)return`<span class="chip ok">0</span>`;
+  if(n<=2)return`<span class="chip warn">${n}</span>`;
+  return`<span class="chip bad">${n}</span>`;
+}
+function fmtA(s){
+  if(!s||!s.trim())return`<span class="dash">—</span>`;
+  if(s.toLowerCase().includes('откр'))return`<span class="muted">до откры...</span>`;
+  return`<span style="color:#94a3b8">${s}</span>`;
+}
+
+// ── RENDER TABLE ─────────────────────────────────────────
+function render(){
+  const area=document.getElementById('tableArea');
+  const q=(document.getElementById('searchBox').value||'').toLowerCase();
+  const rows=allData.filter(r=>r.day===curDay&&(!q||r.pvz.toLowerCase().includes(q)));
+
+  renderKPI(rows.filter(r=>r.dur&&r.dur!=='0:00').length?rows:allData.filter(r=>r.day===curDay));
+
+  if(!allData.length){
+    area.innerHTML=`<div class="err">Данные не загружены.<br>Настройте Google Sheets или добавьте записи вручную.</div>`;
+    return;
+  }
+  if(!rows.length){
+    area.innerHTML=`<div class="loader" style="color:#4b5563">Нет данных за этот день</div>`;
+    return;
+  }
+
+  area.innerHTML=`
+  <div class="tbl-outer">
+    <table>
+      <thead><tr>
+        <th>ПВЗ</th><th>План</th><th>Приезд</th><th>Отъезд</th>
+        <th>Начало</th><th>Конец</th><th>Время</th><th>Непри...</th><th>JIRA</th>
+      </tr></thead>
+      <tbody>${rows.map(r=>{
+        const empty=!r.dur||r.dur==='0:00';
+        const jira=r.jira&&r.jira.startsWith('http')
+          ?`<a href="${r.jira}" class="jlink" target="_blank">↗ тикет</a>`
+          :`<span class="dash">—</span>`;
+        return`<tr class="${empty?'dim':''}">
+          <td><span class="pvz-name">${r.pvz}</span></td>
+          <td style="color:#6b7a8d">${r.plan}</td>
+          <td>${fmtA(r.arrive)}</td>
+          <td>${fmtA(r.leave)}</td>
+          <td style="color:#cbd5e1">${r.start||'<span class="dash">—</span>'}</td>
+          <td style="color:#cbd5e1">${r.end||'<span class="dash">—</span>'}</td>
+          <td>${chipDur(r.dur,r.plan)}</td>
+          <td>${chipMiss(r.miss)}</td>
+          <td>${jira}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>
+  </div>`;
+}
+
+// ── ADD ROW ───────────────────────────────────────────────
+function openAdd(){
+  document.getElementById('inp-day').value=curDay||'';
+  document.getElementById('addModal').classList.add('open');
+}
+function closeAdd(){ document.getElementById('addModal').classList.remove('open'); }
+
+function saveRow(){
+  const row={
+    day: document.getElementById('inp-day').value.trim(),
+    pvz: document.getElementById('inp-pvz').value.trim(),
+    plan: document.getElementById('inp-plan').value.trim()||'1:00',
+    arrive: document.getElementById('inp-arrive').value.trim(),
+    leave: document.getElementById('inp-leave').value.trim(),
+    start: document.getElementById('inp-start').value.trim(),
+    end: document.getElementById('inp-end').value.trim(),
+    dur: calcDur(document.getElementById('inp-start').value.trim(), document.getElementById('inp-end').value.trim()),
+    miss: parseInt(document.getElementById('inp-miss').value)||0,
+    jira: document.getElementById('inp-jira').value.trim(),
+  };
+  if(!row.day||!row.pvz){ alert('Заполните день и ПВЗ'); return; }
+  allData.push(row);
+  saveLocalData(allData);
+  closeAdd();
+  buildDayList();
+  if(curDay!==row.day) setDay(row.day);
+  else render();
+}
+
+function calcDur(s,e){
+  if(!s||!e)return'0:00';
+  const [sh,sm]=s.split(':').map(Number);
+  const [eh,em]=e.split(':').map(Number);
+  let mins=(eh*60+em)-(sh*60+sm);
+  if(mins<0)mins=0;
+  return`${Math.floor(mins/60)}:${String(mins%60).padStart(2,'0')}`;
+}
+
+// ── CFG MODAL ─────────────────────────────────────────────
+function openCfg(){
+  document.getElementById('sheetIdInput').value=getSheetId();
+  document.getElementById('cfgModal').classList.add('open');
+}
+function closeCfg(){ document.getElementById('cfgModal').classList.remove('open'); }
+function saveCfg(){
+  const id=document.getElementById('sheetIdInput').value.trim();
+  localStorage.setItem(SHEET_ID_KEY,id);
+  closeCfg();
+  loadSheet();
+}
+
+// ── DEFAULT DATA ──────────────────────────────────────────
+function getDefaultData(){
+  return [
+    {day:"20",pvz:"FrТАШ-163",plan:"1:00",arrive:"до открытия",leave:"до открытия",start:"9:00",end:"9:50",dur:"0:50",miss:0,jira:""},
+    {day:"20",pvz:"ТАШ-75",plan:"1:00",arrive:"до открытия",leave:"до открытия",start:"12:00",end:"12:25",dur:"0:25",miss:0,jira:""},
+    {day:"20",pvz:"ТАШ-68",plan:"1:00",arrive:"до открытия",leave:"до открытия",start:"11:30",end:"13:10",dur:"1:40",miss:0,jira:""},
+    {day:"20",pvz:"ТАШ-108",plan:"1:00",arrive:"до открытия",leave:"до открытия",start:"10:55",end:"11:30",dur:"0:35",miss:0,jira:""},
+    {day:"20",pvz:"ТАШ-28",plan:"2:00",arrive:"10:10",leave:"10:20",start:"11:10",end:"11:53",dur:"0:43",miss:0,jira:""},
+    {day:"20",pvz:"ТАШ-62",plan:"2:00",arrive:"9:40",leave:"9:48",start:"10:05",end:"11:11",dur:"1:06",miss:1,jira:"https://jsm.uzum.com/servicedesk/customer/portal/8/PVZ-690163"},
+    {day:"20",pvz:"ТАШ-84",plan:"1:00",arrive:"10:15",leave:"10:25",start:"10:35",end:"11:33",dur:"0:58",miss:0,jira:""},
+    {day:"20",pvz:"ТАШ-145",plan:"1:00",arrive:"до открытия",leave:"до открытия",start:"11:20",end:"12:00",dur:"0:40",miss:0,jira:""},
+    {day:"20",pvz:"ТАШ-131",plan:"1:00",arrive:"11:25",leave:"11:30",start:"12:15",end:"13:10",dur:"0:55",miss:0,jira:""},
+    {day:"20",pvz:"ТАШ-33",plan:"1:00",arrive:"до открытия",leave:"до открытия",start:"10:00",end:"11:09",dur:"1:09",miss:0,jira:""},
+    {day:"20",pvz:"ТАШ-130",plan:"1:00",arrive:"10:30",leave:"10:49",start:"11:00",end:"11:30",dur:"0:30",miss:0,jira:""},
+    {day:"20",pvz:"ТАШ-83",plan:"1:00",arrive:"9:50",leave:"10:00",start:"10:20",end:"11:05",dur:"0:45",miss:0,jira:""},
+    {day:"20",pvz:"ТАШ-115",plan:"2:00",arrive:"До Открыто",leave:"До Открыто",start:"8:20",end:"9:18",dur:"0:58",miss:0,jira:""},
+    {day:"20",pvz:"FrТАШ-180",plan:"1:00",arrive:"10:02",leave:"10:10",start:"10:20",end:"11:10",dur:"0:50",miss:0,jira:""},
+    {day:"20",pvz:"FrТАШ-178",plan:"1:00",arrive:"10:35",leave:"10:39",start:"10:40",end:"10:54",dur:"0:14",miss:0,jira:""},
+    {day:"20",pvz:"FrТАШ-192",plan:"1:00",arrive:"9:42",leave:"9:47",start:"9:59",end:"10:12",dur:"0:13",miss:0,jira:""},
+    {day:"20",pvz:"FrТАШ-193",plan:"1:00",arrive:"До Открыто",leave:"До Открыто",start:"9:25",end:"11:05",dur:"1:40",miss:0,jira:""},
+    {day:"20",pvz:"FrТАШ-207",plan:"1:00",arrive:"10:20",leave:"10:22",start:"10:30",end:"10:50",dur:"0:20",miss:0,jira:""},
+    {day:"20",pvz:"FrТАШ-211",plan:"1:00",arrive:"до открытия",leave:"до открытия",start:"10:13",end:"10:37",dur:"0:20",miss:0,jira:""},
+    {day:"20",pvz:"FrТАШ-224",plan:"1:00",arrive:"10:16",leave:"10:20",start:"10:33",end:"11:11",dur:"0:24",miss:0,jira:""},
+    {day:"20",pvz:"FrТАШ-272",plan:"1:00",arrive:"10:03",leave:"10:06",start:"10:07",end:"10:21",dur:"0:38",miss:0,jira:""},
+    {day:"20",pvz:"FrТАШ-288",plan:"1:00",arrive:"11:22",leave:"11:23",start:"11:26",end:"11:32",dur:"0:14",miss:0,jira:""},
+    {day:"21",pvz:"FrТАШ-163",plan:"1:00",arrive:"до открытия",leave:"до открытия",start:"10:05",end:"11:15",dur:"1:10",miss:1,jira:"https://jsm.uzum.com/servicedesk/customer/portal/8/PVZ-691103"},
+    {day:"21",pvz:"ТАШ-75",plan:"1:00",arrive:"до открытия",leave:"до открытия",start:"11:00",end:"11:37",dur:"0:37",miss:0,jira:""},
+    {day:"21",pvz:"ТАШ-68",plan:"1:00",arrive:"до открытия",leave:"до открытия",start:"10:00",end:"11:00",dur:"1:00",miss:1,jira:"https://jsm.uzum.com/servicedesk/customer/portal/8/PVZ-691415"},
+    {day:"21",pvz:"ТАШ-33",plan:"1:00",arrive:"9:30",leave:"9:40",start:"11:00",end:"12:30",dur:"1:30",miss:1,jira:"https://jsm.uzum.com/servicedesk/customer/portal/8/PVZ-691196"},
+    {day:"22",pvz:"ТАШ-33",plan:"1:00",arrive:"11:10",leave:"11:20",start:"11:30",end:"12:15",dur:"0:45",miss:2,jira:"https://jsm.uzum.com/servicedesk/customer/portal/8/PVZ-691971"},
+    {day:"23",pvz:"ТАШ-33",plan:"1:00",arrive:"до открытия",leave:"до открытия",start:"10:20",end:"11:10",dur:"0:50",miss:5,jira:"https://jsm.uzum.com/servicedesk/customer/portal/8/PVZ-692705"},
+  ];
+}
+
+// ── INIT ──────────────────────────────────────────────────
+document.getElementById('loader').remove&&document.getElementById('loader');
+loadSheet();
+</script>
+</body>
+</html>
