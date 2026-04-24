@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
@@ -78,6 +79,7 @@
 <body>
 
 <!-- CONFIG MODAL -->
+
 <div class="modal-bg" id="cfgModal">
   <div class="modal">
     <h3>⚙️ Настройка источника данных</h3>
@@ -96,6 +98,7 @@
 </div>
 
 <!-- ADD ROW MODAL -->
+
 <div class="modal-bg" id="addModal">
   <div class="modal">
     <h3>➕ Добавить запись</h3>
@@ -127,6 +130,7 @@
 </div>
 
 <!-- MAIN -->
+
 <div class="hero">
   <div class="hero-title">📦 Журнал приёмки ПВЗ</div>
   <div class="hero-sub">Ташкент — мониторинг по дням и точкам выдачи</div>
@@ -186,7 +190,7 @@ async function loadSheet(){
 
   try{
     // Use gviz CSV export — works with publicly shared sheets, no API key needed
-    const url=`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=Data`;
+    const url=`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=Лист1`;
     const res=await fetch(url);
     if(!res.ok) throw new Error('HTTP '+res.status);
     const csv=await res.text();
@@ -212,39 +216,52 @@ function finishLoad(btn){
 function setStatus(s){ document.getElementById('heroStatus').textContent=s; }
 
 // ── CSV PARSER ───────────────────────────────────────────
-// Expected columns: day,pvz,plan,arrive,leave,start,end,dur,miss,jira
+// Структура Google Таблицы (Лист1):
+// Строка 1: E1 = номер дня
+// Строка 2: заголовки
+// Строки 3+: данные
+// A=ПВЗ, B=План, C=Факт приезда, D=Факт уезда,
+// E=Начало приёмки, F=Окончание, G=Время приёмки,
+// H=Непринятые заказы, I=Ссылка с JIRA
+
+function splitCSVRow(r){
+  const cols=[];let cur='',inQ=false;
+  for(let i=0;i<r.length;i++){
+    const c=r[i];
+    if(c==='"'){ inQ=!inQ; }
+    else if(c===','&&!inQ){ cols.push(cur.trim());cur=''; }
+    else cur+=c;
+  }
+  cols.push(cur.trim());
+  return cols;
+}
+
 function parseCSV(text){
-  const rows=text.trim().split('\n').map(r=>{
-    // handle quoted fields
-    const cols=[];let cur='',inQ=false;
-    for(let i=0;i<r.length;i++){
-      const c=r[i];
-      if(c==='"'){ inQ=!inQ; }
-      else if(c===','&&!inQ){ cols.push(cur.trim());cur=''; }
-      else cur+=c;
-    }
-    cols.push(cur.trim());
-    return cols;
-  });
-  const header=rows[0].map(h=>h.toLowerCase().replace(/[^a-zа-яё]/gi,''));
+  const lines=text.trim().split('\n');
+  if(lines.length<3) return [];
+
+  // Строка 1: ищем номер дня в колонке E (индекс 4)
+  const row1=splitCSVRow(lines[0]);
+  const dayVal=(row1[4]||'').replace(/\D/g,'').trim();
+
+  // Строка 2: заголовки (пропускаем)
+  // Строки 3+: данные (индекс 2 и далее)
   const data=[];
-  for(let i=1;i<rows.length;i++){
-    const r=rows[i];
-    if(r.length<2||!r[0])continue;
-    const obj={};
-    header.forEach((h,idx)=>{ obj[h]=r[idx]||''; });
-    data.push({
-      day: obj['day']||obj['день']||r[0],
-      pvz: obj['pvz']||obj['пвз']||r[1],
-      plan: obj['plan']||obj['план']||r[2]||'1:00',
-      arrive: obj['arrive']||obj['приезд']||r[3]||'',
-      leave: obj['leave']||obj['отъезд']||r[4]||'',
-      start: obj['start']||obj['начало']||r[5]||'',
-      end: obj['end']||obj['конец']||r[6]||'',
-      dur: obj['dur']||obj['время']||r[7]||'0:00',
-      miss: parseInt(obj['miss']||obj['непринятые']||r[8])||0,
-      jira: obj['jira']||r[9]||'',
-    });
+  for(let i=2;i<lines.length;i++){
+    const r=splitCSVRow(lines[i]);
+    const pvz=(r[0]||'').trim();
+    if(!pvz) continue;
+
+    const plan=(r[1]||'1:00').trim()||'1:00';
+    const arrive=(r[2]||'').trim();
+    const leave=(r[3]||'').trim();
+    const start=(r[4]||'').trim();
+    const end=(r[5]||'').trim();
+    const dur=(r[6]||'0:00').trim()||'0:00';
+    const miss=parseInt(r[7])||0;
+    const jira=(r[8]||'').trim();
+
+    data.push({ day:dayVal, pvz, plan, arrive, leave, start, end, dur, miss, jira });
   }
   return data;
 }
@@ -450,5 +467,6 @@ function getDefaultData(){
 document.getElementById('loader').remove&&document.getElementById('loader');
 loadSheet();
 </script>
+
 </body>
 </html>
